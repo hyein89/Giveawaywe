@@ -36,7 +36,7 @@ export default function ViewPage() {
     }
 
     // Load JSON dari public folder
-    fetch("/giveaways.json")
+    fetch("/data.json")
       .then((res) => res.json())
       .then((json: GiveawayData[]) => {
         const found = json.find((g) => g.key === key);
