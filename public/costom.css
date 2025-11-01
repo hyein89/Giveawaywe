@@ -26,7 +26,7 @@ header {
 header img.avatar {
   width: 95px;
   height: 95px;
-  border-radius: 50%;
+  border-radius: 80%;
   object-fit: cover;
   border: 3px solid #fff;
   margin-bottom: 12px;
