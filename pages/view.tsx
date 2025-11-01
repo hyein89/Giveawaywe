@@ -4,6 +4,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import fs from "fs";
 import path from "path";
+import { REDIRECT_URL } from "../lib/config"; // sesuaikan path
 
 type GiveawayData = {
   key: string;
@@ -31,7 +32,7 @@ export default function ViewPage({ giveaway }: Props) {
   const [claimActive, setClaimActive] = useState(false);
   const [popupActive, setPopupActive] = useState(false);
 
-  const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
+  const FINAL_OFFER_URL = REDIRECT_URL;
 
   // COOKIE HELPER
   const setCookie = (name: string, value: string, minutes: number) => {
