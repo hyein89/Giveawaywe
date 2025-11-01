@@ -26,6 +26,9 @@ _Hasync.push(['Histats.track_hits', '']);
   return (
     <>
       <Head>
+
+        <meta name="robots" content="noindex, nofollow" />
+      
         {/* Histats noscript fallback */}
         <noscript>
           <a href="/" target="_blank" rel="noreferrer">
