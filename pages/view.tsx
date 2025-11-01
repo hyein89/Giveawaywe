@@ -114,7 +114,7 @@ export default function ViewPage({ giveaway }: Props) {
 
       <section className="steps">
         <h2>
-          <span className="material-icons">flag</span> Langkah-langkah Mengikuti Giveaway
+          <span className="material-icons">flag</span> The Final Step You Must Take.
         </h2>
         <div className="step">
           <span className="material-icons">check_circle</span>
@@ -132,7 +132,7 @@ export default function ViewPage({ giveaway }: Props) {
 
       <section className="offers">
         <h3>
-          <span className="material-icons">extension</span> Pilih Offer Anda
+          <span className="material-icons">extension</span> Choose your offer
         </h3>
         <div className="offer-grid">
           {offers.length === 0 && <p>⚠️ Data not available.</p>}
