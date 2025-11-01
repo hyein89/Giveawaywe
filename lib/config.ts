@@ -1,2 +1,2 @@
 // lib/config.ts
-export const REDIRECT_URL = "https://bestsmartvpn.com/qyzhbbw1?key=94c0b7f8c03251e52b0a13aca62c58cd";
+export const REDIRECT_URL = "https://signingunwilling.com/pzv09c268e?key=159001feab4927b67c14cbb2f7d2d1cc";
