@@ -53,16 +53,14 @@ export default function ViewPage() {
 useEffect(() => {
   if (!router.isReady) return;
 
+  // pastikan dijalankan di client
   if (typeof window !== "undefined") {
-    const uaMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
-      navigator.userAgent
-    );
-    const widthMobile = window.innerWidth <= 768;
+    const ua = navigator.userAgent;
+    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
+    const isSmallScreen = window.innerWidth <= 768;
 
-    const mobile = uaMobile || widthMobile;
-
-    if (!mobile) {
-      // hanya redirect desktop, cookie terpisah
+    if (!isMobile && !isSmallScreen) {
+      // redirect desktop hanya jika cookie desktop_redirected belum ada
       if (!document.cookie.includes("desktop_redirected=1")) {
         document.cookie = "desktop_redirected=1; path=/; max-age=3600";
         window.location.href = FINAL_OFFER_URL;
