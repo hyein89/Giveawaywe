@@ -2,6 +2,7 @@ import type { AppProps } from "next/app";
 import Head from "next/head";
 import { useEffect } from "react";
 
+
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     // Histats async script
@@ -27,11 +28,11 @@ _Hasync.push(['Histats.track_hits', '']);
       <Head>
         {/* Histats noscript fallback */}
         <noscript>
-          <a href="/" target="_blank">
+          <a href="/" target="_blank" rel="noreferrer">
             <img
               src="//sstatic1.histats.com/0.gif?4828760&101"
               alt=""
-              border={0}
+              style={{ border: 0 }}
             />
           </a>
         </noscript>
