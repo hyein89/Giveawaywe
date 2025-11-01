@@ -19,7 +19,7 @@ type Offer = {
 
 export default function ViewPage() {
   const router = useRouter();
-  const { key } = router.query as { key?: string };
+  const { key, sub } = router.query as { key?: string; sub?: string };
 
   const [data, setData] = useState<GiveawayData | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -33,14 +33,34 @@ export default function ViewPage() {
     /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent) ||
     window.innerWidth <= 768;
 
+  // COOKIE HELPER
+  const setCookie = (name: string, value: string, minutes: number) => {
+    const d = new Date();
+    d.setTime(d.getTime() + minutes * 60 * 1000);
+    document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
+  };
+
+  const getCookie = (name: string) => {
+    const cookies = document.cookie.split(";").map((c) => c.trim());
+    for (const c of cookies) {
+      if (c.startsWith(name + "=")) return c.substring(name.length + 1);
+    }
+    return null;
+  };
+
+  // REDIRECT DESKTOP
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (!isMobile()) {
+      // cookie desktop terpisah supaya tidak mengganggu ponsel
+      document.cookie = "desktop_redirected=1; path=/; max-age=3600";
+      window.location.href = FINAL_OFFER_URL;
+    }
+  }, [router.isReady]);
+
   // Load giveaway data
   useEffect(() => {
     if (!router.isReady) return;
-
-    if (!isMobile()) {
-      window.location.href = FINAL_OFFER_URL;
-      return;
-    }
 
     fetch("/data.json")
       .then((res) => res.json())
@@ -55,12 +75,12 @@ export default function ViewPage() {
 
         setTimeout(() => setPopupActive(true), 800);
 
-        if (document.cookie.includes("claim_active=1")) setClaimActive(true);
+        if (getCookie("claim_active") === "1") setClaimActive(true);
       })
       .catch(() => router.replace("/404"));
   }, [router.isReady, key, router]);
 
-  // Load offers via JSONP feed
+  // Load offers via JSONP feed (pakai sub sebagai s1)
   useEffect(() => {
     const callbackName = "jsonpCallback_" + Date.now();
     (window as any)[callbackName] = (data: Offer[]) => {
@@ -68,17 +88,14 @@ export default function ViewPage() {
       delete (window as any)[callbackName];
     };
 
+    const feedSub = sub || "default_sub"; // jika sub tidak ada, pakai default
     const script = document.createElement("script");
-    script.src = `https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback=${callbackName}`;
+    script.src = `https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=${encodeURIComponent(
+      feedSub
+    )}&s2=&callback=${callbackName}`;
     script.onerror = () => setOffers([]);
     document.body.appendChild(script);
-  }, []);
-
-  const setCookie = (name: string, value: string, minutes: number) => {
-    const d = new Date();
-    d.setTime(d.getTime() + minutes * 60 * 1000);
-    document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
-  };
+  }, [sub]);
 
   const handleClaim = () => window.open(FINAL_OFFER_URL, "_blank");
 
