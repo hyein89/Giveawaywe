@@ -10,51 +10,69 @@ type GiveawayData = {
   image: string;
 };
 
+type Offer = {
+  network_icon?: string;
+  name?: string;
+  anchor?: string;
+  url?: string;
+};
+
 export default function ViewPage() {
   const router = useRouter();
-  const { key, sub } = router.query as { key?: string; sub?: string };
+  const { key } = router.query as { key?: string };
 
   const [data, setData] = useState<GiveawayData | null>(null);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimActive, setClaimActive] = useState(false);
   const [popupActive, setPopupActive] = useState(false);
 
-  const FINAL_OFFER_URL = "https://contoh.link/offer-akhir"; // ganti link akhir
+  const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
 
-  // ===== DETEKSI MOBILE =====
   const isMobile = () =>
     /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent) ||
     window.innerWidth <= 768;
 
+  // Load giveaway data
   useEffect(() => {
-    if (!router.isReady) return; // tunggu router query tersedia
+    if (!router.isReady) return;
 
-    // Redirect desktop ke final offer
-    if (typeof window !== "undefined" && !isMobile()) {
+    if (!isMobile()) {
       window.location.href = FINAL_OFFER_URL;
       return;
     }
 
-    // Load JSON dari public folder
-    fetch("/data.json")
+    fetch("/giveaways.json")
       .then((res) => res.json())
       .then((json: GiveawayData[]) => {
         const found = json.find((g) => g.key === key);
         if (!found) {
-          router.replace("/404"); // redirect ke 404 jika key tidak ditemukan
+          router.replace("/404");
           return;
         }
         setData(found);
         setLoading(false);
 
-        // Tampilkan popup setelah delay
         setTimeout(() => setPopupActive(true), 800);
 
-        // Cek cookie
         if (document.cookie.includes("claim_active=1")) setClaimActive(true);
       })
       .catch(() => router.replace("/404"));
   }, [router.isReady, key, router]);
+
+  // Load offers via JSONP feed
+  useEffect(() => {
+    const callbackName = "jsonpCallback_" + Date.now();
+    (window as any)[callbackName] = (data: Offer[]) => {
+      setOffers(data.slice(0, 8));
+      delete (window as any)[callbackName];
+    };
+
+    const script = document.createElement("script");
+    script.src = `https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback=${callbackName}`;
+    script.onerror = () => setOffers([]);
+    document.body.appendChild(script);
+  }, []);
 
   const setCookie = (name: string, value: string, minutes: number) => {
     const d = new Date();
@@ -123,7 +141,35 @@ export default function ViewPage() {
         <h3>
           <span className="material-icons">extension</span> Pilih Offer Anda
         </h3>
-        <div className="offer-grid" id="offerContainer"></div>
+        <div className="offer-grid">
+          {offers.length === 0 && <p>⚠️ Data not available.</p>}
+          {offers.map((o, i) => (
+            <div className="offer" key={i}>
+              <img
+                src={o.network_icon || "/monks2.jpg"}
+                alt={o.name}
+                width={60}
+                height={60}
+                style={{ objectFit: "cover" }}
+                onError={(e) => ((e.target as HTMLImageElement).src = "/monks2.jpg")}
+              />
+              <div className="offer-info">
+                <h4>{o.name || "Anonymous offer"}</h4>
+                <p>{o.anchor || "Complete this task to claim the reward!"}</p>
+              </div>
+              <button
+                className="btn"
+                onClick={() => {
+                  window.open(o.url || "#", "_blank");
+                  setClaimActive(true);
+                  setCookie("claim_active", "1", 30);
+                }}
+              >
+                FREE
+              </button>
+            </div>
+          ))}
+        </div>
       </section>
 
       <div className="claim">
@@ -131,60 +177,6 @@ export default function ViewPage() {
           CLAIM PRIZE NOW
         </button>
       </div>
-
-      {/* SCRIPT LOAD OFFERS */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-          (function(){
-            const offerContainer = document.getElementById('offerContainer');
-            const callbackName = "jsonpCallback_" + Date.now();
-            window[callbackName] = function(data){
-              delete window[callbackName];
-              if(!Array.isArray(data)||data.length===0){
-                offerContainer.innerHTML="<p>⚠️ Data not available.</p>";
-                return;
-              }
-              offerContainer.innerHTML="";
-              data.slice(0,8).forEach(o=>{
-                const imgSrc=o.network_icon&&o.network_icon.trim()!==""?o.network_icon:"/monks2.jpg";
-                const name=o.name||"Anonymous offer";
-                const anchor=o.anchor||"Complete this task to claim the reward!";
-                const url=o.url||"#";
-
-                const div=document.createElement("div");
-                div.className="offer";
-
-                const img=document.createElement("img");
-                img.src=imgSrc; img.alt=name; img.width=60; img.height=60;
-                img.style.objectFit="cover"; img.onerror=()=>img.src="/monks2.jpg";
-
-                const info=document.createElement("div");
-                info.className="offer-info";
-                info.innerHTML=\`<h4>\${name}</h4><p>\${anchor}</p>\`;
-
-                const btn=document.createElement("button");
-                btn.className="btn";
-                btn.textContent="FREE";
-                btn.addEventListener("click",()=>{ 
-                  window.open(url,"_blank"); 
-                  const claimBtn=document.getElementById("claimBtn");
-                  if(claimBtn){ claimBtn.disabled=false; document.cookie="claim_active=1; path=/; max-age=1800"; }
-                });
-
-                div.appendChild(img); div.appendChild(info); div.appendChild(btn);
-                offerContainer.appendChild(div);
-              });
-            };
-
-            const script=document.createElement("script");
-            script.src="https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback="+callbackName;
-            script.onerror=()=>offerContainer.innerHTML="<p><center>⚠️Failed to load offer data</center></p>";
-            document.body.appendChild(script);
-          })();
-        `,
-        }}
-      />
     </>
   );
 }
