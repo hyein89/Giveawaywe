@@ -82,6 +82,7 @@ export default function ViewPage({ giveaway }: Props) {
         <meta property="og:title" content={giveaway.title} />
         <meta property="og:image" content={giveaway.image} />
         <meta property="og:type" content="website" />
+        <link rel="icon" href="/5671927.png" type="image/png" />
         <meta property="og:description" content={`Join ${giveaway.title} giveaway now!`} />
         <meta property="og:url" content={`https://giveawaywe.vercel.app${router.asPath}`} />
         <link
