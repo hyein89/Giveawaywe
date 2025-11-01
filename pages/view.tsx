@@ -1,3 +1,4 @@
+// pages/view.tsx
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -26,13 +27,16 @@ export default function ViewPage() {
     window.innerWidth <= 768;
 
   useEffect(() => {
+    if (!router.isReady) return; // tunggu router query tersedia
+
     // Redirect desktop ke final offer
     if (typeof window !== "undefined" && !isMobile()) {
       window.location.href = FINAL_OFFER_URL;
+      return;
     }
 
     // Load JSON dari public folder
-    fetch("/data.json")
+    fetch("/giveaways.json")
       .then((res) => res.json())
       .then((json: GiveawayData[]) => {
         const found = json.find((g) => g.key === key);
@@ -50,7 +54,7 @@ export default function ViewPage() {
         if (document.cookie.includes("claim_active=1")) setClaimActive(true);
       })
       .catch(() => router.replace("/404"));
-  }, [key, router]);
+  }, [router.isReady, key, router]);
 
   const setCookie = (name: string, value: string, minutes: number) => {
     const d = new Date();
@@ -59,12 +63,6 @@ export default function ViewPage() {
   };
 
   const handleClaim = () => window.open(FINAL_OFFER_URL, "_blank");
-
-  const handleOfferClick = (url: string) => {
-    window.open(url, "_blank");
-    setClaimActive(true);
-    setCookie("claim_active", "1", 30);
-  };
 
   if (loading || !data) return null;
 
@@ -125,9 +123,7 @@ export default function ViewPage() {
         <h3>
           <span className="material-icons">extension</span> Pilih Offer Anda
         </h3>
-        <div className="offer-grid" id="offerContainer">
-          {/* Offers akan di-load melalui JS */}
-        </div>
+        <div className="offer-grid" id="offerContainer"></div>
       </section>
 
       <div className="claim">
@@ -136,56 +132,57 @@ export default function ViewPage() {
         </button>
       </div>
 
+      {/* SCRIPT LOAD OFFERS */}
       <script
         dangerouslySetInnerHTML={{
           __html: `
-            function loadOffers() {
-              const offerContainer = document.getElementById('offerContainer');
-              const callbackName = "jsonpCallback_" + Date.now();
-              window[callbackName] = function(data) {
-                delete window[callbackName];
-                if (!Array.isArray(data) || data.length === 0) {
-                  offerContainer.innerHTML = "<p>⚠️ Data not available.</p>";
-                  return;
-                }
-                offerContainer.innerHTML = "";
-                data.slice(0,8).forEach(o=>{
-                  const imgSrc = o.network_icon && o.network_icon.trim() !== "" ? o.network_icon : "/monks2.jpg";
-                  const name = o.name || "Anonymous offer";
-                  const anchor = o.anchor || "Complete this task to claim the reward!";
-                  const url = o.url || "#";
+          (function(){
+            const offerContainer = document.getElementById('offerContainer');
+            const callbackName = "jsonpCallback_" + Date.now();
+            window[callbackName] = function(data){
+              delete window[callbackName];
+              if(!Array.isArray(data)||data.length===0){
+                offerContainer.innerHTML="<p>⚠️ Data not available.</p>";
+                return;
+              }
+              offerContainer.innerHTML="";
+              data.slice(0,8).forEach(o=>{
+                const imgSrc=o.network_icon&&o.network_icon.trim()!==""?o.network_icon:"/monks2.jpg";
+                const name=o.name||"Anonymous offer";
+                const anchor=o.anchor||"Complete this task to claim the reward!";
+                const url=o.url||"#";
 
-                  const div = document.createElement("div");
-                  div.className="offer";
+                const div=document.createElement("div");
+                div.className="offer";
 
-                  const img = document.createElement("img");
-                  img.src=imgSrc; img.alt=name; img.width=60; img.height=60;
-                  img.style.objectFit="cover"; img.onerror=()=>img.src="/monks2.jpg";
+                const img=document.createElement("img");
+                img.src=imgSrc; img.alt=name; img.width=60; img.height=60;
+                img.style.objectFit="cover"; img.onerror=()=>img.src="/monks2.jpg";
 
-                  const info=document.createElement("div");
-                  info.className="offer-info";
-                  info.innerHTML=\`<h4>\${name}</h4><p>\${anchor}</p>\`;
+                const info=document.createElement("div");
+                info.className="offer-info";
+                info.innerHTML=\`<h4>\${name}</h4><p>\${anchor}</p>\`;
 
-                  const btn=document.createElement("button");
-                  btn.className="btn";
-                  btn.textContent="FREE";
-                  btn.addEventListener("click", ()=> {
-                    window.open(url,"_blank");
-                    const claimBtn=document.getElementById("claimBtn");
-                    if(claimBtn) { claimBtn.disabled=false; document.cookie="claim_active=1; path=/; max-age=1800"; }
-                  });
-
-                  div.appendChild(img); div.appendChild(info); div.appendChild(btn);
-                  offerContainer.appendChild(div);
+                const btn=document.createElement("button");
+                btn.className="btn";
+                btn.textContent="FREE";
+                btn.addEventListener("click",()=>{ 
+                  window.open(url,"_blank"); 
+                  const claimBtn=document.getElementById("claimBtn");
+                  if(claimBtn){ claimBtn.disabled=false; document.cookie="claim_active=1; path=/; max-age=1800"; }
                 });
-              };
-              const script=document.createElement("script");
-              script.src="https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback="+callbackName;
-              script.onerror=()=>offerContainer.innerHTML="<p><center>⚠️Failed to load offer data</center></p>";
-              document.body.appendChild(script);
-            }
-            loadOffers();
-          `,
+
+                div.appendChild(img); div.appendChild(info); div.appendChild(btn);
+                offerContainer.appendChild(div);
+              });
+            };
+
+            const script=document.createElement("script");
+            script.src="https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback="+callbackName;
+            script.onerror=()=>offerContainer.innerHTML="<p><center>⚠️Failed to load offer data</center></p>";
+            document.body.appendChild(script);
+          })();
+        `,
         }}
       />
     </>
