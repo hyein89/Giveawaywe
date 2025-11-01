@@ -261,7 +261,7 @@ section.offers h3 {
 /* Mobile */
 @media (max-width: 768px) {
   header h1 { font-size: 20px; }
-  header img.avatar { width: 75px; height: 75px; }
+  header img.avatar { width: 85px; height: 85px; }
   section.steps { padding: 25px 12px 15px; }
   section.offers { padding: 25px 12px; }
   .offer-grid { grid-template-columns: 1fr; }
@@ -275,7 +275,7 @@ section.offers h3 {
 /* Small Mobile */
 @media (max-width: 480px) {
   header { padding: 40px 10px 55px; }
-  header img.avatar { width: 70px; height: 70px; }
+  header img.avatar { width: 80px; height: 80px; }
   section.steps { padding: 20px 10px 12px; }
   section.offers { padding: 20px 10px; }
   .offer-info h4 { font-size: 12px; }
@@ -287,7 +287,7 @@ section.offers h3 {
 /* Extra Small (very small phones) */
 @media (max-width: 360px) {
   header h1 { font-size: 18px; }
-  header img.avatar { width: 60px; height: 60px; }
+  header img.avatar { width: 70px; height: 70px; }
   section.steps { padding: 18px 8px 10px; }
   section.offers { padding: 18px 8px; }
   .offer-info h4 { font-size: 11px; }
