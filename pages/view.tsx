@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import data from "../data.json"; // JSON adalah array sekarang
+import data from "../data.json"; // JSON array
 
 type GiveawayData = {
   key: string;
@@ -39,6 +39,7 @@ export default function ViewPage() {
       window.location.href = FINAL_OFFER_URL;
     }
 
+    // ==== POPUP ====
     const popup = document.getElementById("popup");
     const closePopup = document.getElementById("closePopup");
     if (popup && closePopup) {
@@ -46,8 +47,9 @@ export default function ViewPage() {
       closePopup.addEventListener("click", () => popup.classList.remove("active"));
     }
 
+    // ==== OFFER & CLAIM BUTTON ====
     const claimBtn = document.getElementById("claimBtn") as HTMLButtonElement;
-    const offerContainer = document.getElementById("offerContainer");
+    const offerContainer = document.querySelector(".offer-grid");
     if (!offerContainer || !claimBtn) return;
 
     function setCookie(name: string, value: string, minutes: number) {
@@ -71,6 +73,7 @@ export default function ViewPage() {
       const callbackName = "jsonpCallback_" + Date.now();
       (window as any)[callbackName] = function (data: any[]) {
         delete (window as any)[callbackName];
+
         if (!Array.isArray(data) || data.length === 0) {
           offerContainer.innerHTML = "<p>⚠️ Data not available.</p>";
           return;
@@ -183,7 +186,7 @@ export default function ViewPage() {
         <h3>
           <span className="material-icons">extension</span> Pilih Offer Anda
         </h3>
-        <div className="offer-grid" id="offerContainer"></div>
+        <div className="offer-grid"></div>
       </section>
 
       <div className="claim">
