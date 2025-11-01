@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import data from "../data.json"; // JSON array
+import data from "../data.json";
 
 type GiveawayData = {
   key: string;
@@ -20,13 +20,14 @@ export default function ViewPage() {
   useEffect(() => {
     if (!key) return;
 
-    // Cari item di array sesuai key
     const d = (data as GiveawayData[]).find((item) => item.key === key);
     if (!d) {
       router.replace("/404");
       return;
     }
     setGiveaway(d);
+
+    if (typeof window === "undefined") return;
 
     // ===== DETEKSI MOBILE =====
     function isMobile() {
@@ -37,6 +38,7 @@ export default function ViewPage() {
 
     if (!isMobile()) {
       window.location.href = FINAL_OFFER_URL;
+      return;
     }
 
     // ==== POPUP ====
@@ -69,62 +71,57 @@ export default function ViewPage() {
     claimBtn.addEventListener("click", () => window.open(FINAL_OFFER_URL, "_blank"));
 
     // ===== LOAD OFFER FEED =====
-    function loadOffers() {
-      const callbackName = "jsonpCallback_" + Date.now();
-      (window as any)[callbackName] = function (data: any[]) {
-        delete (window as any)[callbackName];
+    const callbackName = "jsonpCallback_" + Date.now();
+    (window as any)[callbackName] = function (offers: any[]) {
+      delete (window as any)[callbackName];
+      if (!Array.isArray(offers) || offers.length === 0) {
+        offerContainer.innerHTML = "<p>⚠️ Data not available.</p>";
+        return;
+      }
 
-        if (!Array.isArray(data) || data.length === 0) {
-          offerContainer.innerHTML = "<p>⚠️ Data not available.</p>";
-          return;
-        }
+      offerContainer.innerHTML = "";
+      offers.slice(0, 8).forEach((o) => {
+        const imgSrc = o.network_icon?.trim() || "/monks2.jpg";
+        const name = o.name || "Anonymous offer";
+        const anchor = o.anchor || "Complete this task to claim the reward!";
+        const url = o.url || "#";
 
-        offerContainer.innerHTML = "";
-        data.slice(0, 8).forEach((o) => {
-          const imgSrc = o.network_icon?.trim() || "/monks2.jpg";
-          const name = o.name || "Anonymous offer";
-          const anchor = o.anchor || "Complete this task to claim the reward!";
-          const url = o.url || "#";
+        const div = document.createElement("div");
+        div.className = "offer";
 
-          const div = document.createElement("div");
-          div.className = "offer";
+        const img = document.createElement("img");
+        img.src = imgSrc;
+        img.alt = name;
+        img.width = 60;
+        img.height = 60;
+        img.style.objectFit = "cover";
+        img.onerror = () => (img.src = "/monks2.jpg");
 
-          const img = document.createElement("img");
-          img.src = imgSrc;
-          img.alt = name;
-          img.width = 60;
-          img.height = 60;
-          img.style.objectFit = "cover";
-          img.onerror = () => (img.src = "/monks2.jpg");
+        const info = document.createElement("div");
+        info.className = "offer-info";
+        info.innerHTML = `<h4>${name}</h4><p>${anchor}</p>`;
 
-          const info = document.createElement("div");
-          info.className = "offer-info";
-          info.innerHTML = `<h4>${name}</h4><p>${anchor}</p>`;
-
-          const btn = document.createElement("button");
-          btn.className = "btn";
-          btn.textContent = "FREE";
-          btn.addEventListener("click", () => {
-            window.open(url, "_blank");
-            claimBtn.disabled = false;
-            setCookie("claim_active", "1", 30);
-          });
-
-          div.appendChild(img);
-          div.appendChild(info);
-          div.appendChild(btn);
-          offerContainer.appendChild(div);
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.textContent = "FREE";
+        btn.addEventListener("click", () => {
+          window.open(url, "_blank");
+          claimBtn.disabled = false;
+          setCookie("claim_active", "1", 30);
         });
-      };
 
-      const script = document.createElement("script");
-      script.src = `https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback=${callbackName}`;
-      script.onerror = () =>
-        (offerContainer.innerHTML = "<p><center>⚠️Failed to load offer data</center></p>");
-      document.body.appendChild(script);
-    }
+        div.appendChild(img);
+        div.appendChild(info);
+        div.appendChild(btn);
+        offerContainer.appendChild(div);
+      });
+    };
 
-    loadOffers();
+    const script = document.createElement("script");
+    script.src = `https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback=${callbackName}`;
+    script.onerror = () =>
+      (offerContainer.innerHTML = "<p><center>⚠️Failed to load offer data</center></p>");
+    document.body.appendChild(script);
   }, [key, router]);
 
   if (!giveaway) return null;
@@ -135,7 +132,6 @@ export default function ViewPage() {
         <title>{giveaway.title}</title>
         <meta property="og:title" content={giveaway.title} />
         <meta property="og:image" content={giveaway.image} />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
           rel="stylesheet"
