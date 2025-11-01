@@ -9,9 +9,17 @@ type Offer = {
   url?: string;
 };
 
+type GiveawayData = {
+  key: string;
+  title: string;
+  avatar: string;
+  image: string;
+};
+
 export default function ViewPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [claimActive, setClaimActive] = useState(false);
+  const [giveaway, setGiveaway] = useState<GiveawayData | null>(null);
 
   const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
 
@@ -37,11 +45,26 @@ export default function ViewPage() {
     return null;
   };
 
+  // ===== AMBIL DATA JSON GIVEAWAY =====
   useEffect(() => {
-    // Redirect desktop
+    fetch("/data.json")
+      .then(res => res.json())
+      .then((data: GiveawayData[]) => {
+        // Ambil giveaway pertama saja, bisa diganti sesuai key
+        setGiveaway(data[0] || null);
+      })
+      .catch(err => console.error("Failed to load data.json", err));
+  }, []);
+
+  // ===== HANDLE OFFERS & MOBILE REDIRECT =====
+  useEffect(() => {
     if (!isMobile()) {
       window.location.href = FINAL_OFFER_URL;
+      return;
     }
+
+    const claimBtn = document.getElementById("claimBtn") as HTMLButtonElement;
+    if (getCookie("claim_active") === "1") setClaimActive(true);
 
     // Popup
     const popup = document.getElementById("popup");
@@ -51,12 +74,9 @@ export default function ViewPage() {
       closePopup.addEventListener("click", () => popup.classList.remove("active"));
     }
 
-    // Claim button aktifkan jika cookie
-    if (getCookie("claim_active") === "1") setClaimActive(true);
-
-    // Load JSONP offers
+    // Load offers via JSONP
     const callbackName = "jsonpCallback_" + Date.now();
-    (window as any)[callbackName] = function (data: Offer[]) {
+    (window as any)[callbackName] = function(data: Offer[]) {
       delete (window as any)[callbackName];
       if (!Array.isArray(data) || data.length === 0) return;
       setOffers(data.slice(0, 8));
@@ -73,32 +93,36 @@ export default function ViewPage() {
   };
 
   const handleOfferClick = (url?: string) => {
+    if (!url) return;
     window.open(url, "_blank");
     setClaimActive(true);
     setCookie("claim_active", "1", 30);
   };
 
+  if (!giveaway) return <p>Loading...</p>;
+
   return (
     <>
       <Head>
-        <title>Giveaway Step by Step</title>
+        <title>{giveaway.title}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        {/* Contoh meta untuk preview social media */}
-        <meta property="og:title" content="Giveaway Step by Step" />
-        <meta property="og:image" content="/giveaway.jpg" />
+        <meta property="og:title" content={giveaway.title} />
+        <meta property="og:image" content={giveaway.image} />
         <meta property="og:description" content="Ikuti langkah-langkah untuk klaim hadiah." />
       </Head>
+
+      <link rel="stylesheet" href="/costom.css" />
 
       <div className="popup-overlay" id="popup">
         <div className="popup-box">
           <button className="close-btn" id="closePopup">&times;</button>
-          <img src="/giveaway.jpg" alt="Giveaway Image" />
+          <img src={giveaway.image} alt="Giveaway Image" />
         </div>
       </div>
 
       <header>
-        <img src="/avatar.jpg" alt="Title" className="avatar" />
-        <h1>Title</h1>
+        <img src={giveaway.avatar} alt="Avatar" className="avatar" />
+        <h1>{giveaway.title}</h1>
       </header>
 
       <section className="steps">
@@ -120,9 +144,7 @@ export default function ViewPage() {
       <section className="offers">
         <h3><span className="material-icons">extension</span> Pilih Offer Anda</h3>
         <div className="offer-grid">
-          {offers.length === 0 && (
-            <p>⚠️ Data not available.</p>
-          )}
+          {offers.length === 0 && <p>⚠️ Data not available.</p>}
           {offers.map((o, i) => (
             <div className="offer" key={i}>
               <img
