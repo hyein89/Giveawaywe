@@ -42,7 +42,7 @@ export default function ViewPage() {
       return;
     }
 
-    fetch("/giveaways.json")
+    fetch("/data.json")
       .then((res) => res.json())
       .then((json: GiveawayData[]) => {
         const found = json.find((g) => g.key === key);
