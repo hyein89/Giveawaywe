@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import Head from "next/head";
 import { useRouter } from "next/router";
-import data from "../data.json";
+import Head from "next/head";
+import data from "../data.json"; // pastikan file JSON ada di folder root
 
 type GiveawayData = {
   title: string;
@@ -19,25 +19,27 @@ export default function ViewPage() {
   useEffect(() => {
     if (!key) return;
 
+    // Ambil data dari JSON lokal
     const d = (data as Record<string, GiveawayData>)[key as string];
     if (!d) {
       router.replace("/404");
       return;
     }
-
     setGiveaway(d);
 
-    // DETEKSI MOBILE
+    // ===== DETEKSI MOBILE =====
     function isMobile() {
       return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
         navigator.userAgent
       ) || window.innerWidth <= 768;
     }
+
+    // Redirect desktop
     if (!isMobile()) {
       window.location.href = FINAL_OFFER_URL;
     }
 
-    // POPUP & CLAIM BUTTON
+    // ===== POPUP & CLAIM BUTTON =====
     const popup = document.getElementById("popup");
     const closePopup = document.getElementById("closePopup");
     if (popup && closePopup) {
@@ -49,13 +51,14 @@ export default function ViewPage() {
     const offerContainer = document.getElementById("offerContainer");
     if (!offerContainer || !claimBtn) return;
 
+    // COOKIE HELPER
     function setCookie(name: string, value: string, minutes: number) {
       const d = new Date();
       d.setTime(d.getTime() + minutes * 60 * 1000);
       document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
     }
     function getCookie(name: string) {
-      const cookies = document.cookie.split(";").map(c => c.trim());
+      const cookies = document.cookie.split(";").map((c) => c.trim());
       for (const c of cookies) {
         if (c.startsWith(name + "=")) return c.substring(name.length + 1);
       }
@@ -65,19 +68,18 @@ export default function ViewPage() {
     if (getCookie("claim_active") === "1") claimBtn.disabled = false;
     claimBtn.addEventListener("click", () => window.open(FINAL_OFFER_URL, "_blank"));
 
-    // Load offer via JSONP
+    // ===== LOAD OFFER FEED =====
     function loadOffers() {
       const callbackName = "jsonpCallback_" + Date.now();
       (window as any)[callbackName] = function (data: any[]) {
         delete (window as any)[callbackName];
-
         if (!Array.isArray(data) || data.length === 0) {
           offerContainer.innerHTML = "<p>⚠️ Data not available.</p>";
           return;
         }
 
         offerContainer.innerHTML = "";
-        data.slice(0, 8).forEach(o => {
+        data.slice(0, 8).forEach((o) => {
           const imgSrc = o.network_icon?.trim() || "/monks2.jpg";
           const name = o.name || "Anonymous offer";
           const anchor = o.anchor || "Complete this task to claim the reward!";
@@ -130,9 +132,9 @@ export default function ViewPage() {
     <>
       <Head>
         <title>{giveaway.title}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta property="og:title" content={giveaway.title} />
         <meta property="og:image" content={giveaway.giveawayImage} />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
           rel="stylesheet"
@@ -144,6 +146,7 @@ export default function ViewPage() {
         <link rel="stylesheet" href="/costom.css" />
       </Head>
 
+      {/* POPUP */}
       <div className="popup-overlay" id="popup">
         <div className="popup-box">
           <button className="close-btn" id="closePopup">
@@ -153,11 +156,13 @@ export default function ViewPage() {
         </div>
       </div>
 
+      {/* HEADER */}
       <header>
         <img src={giveaway.avatar} alt="Avatar" className="avatar" />
         <h1>{giveaway.title}</h1>
       </header>
 
+      {/* STEPS */}
       <section className="steps">
         <h2>
           <span className="material-icons">flag</span> Langkah-langkah Mengikuti
@@ -179,6 +184,7 @@ export default function ViewPage() {
         </div>
       </section>
 
+      {/* OFFERS */}
       <section className="offers">
         <h3>
           <span className="material-icons">extension</span> Pilih Offer Anda
@@ -186,6 +192,7 @@ export default function ViewPage() {
         <div className="offer-grid" id="offerContainer"></div>
       </section>
 
+      {/* CLAIM BUTTON */}
       <div className="claim">
         <button id="claimBtn" disabled>
           CLAIM PRIZE NOW
