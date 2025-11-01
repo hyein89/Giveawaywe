@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import { GetServerSideProps } from "next";
 
 type GiveawayData = {
   key: string;
@@ -17,9 +18,11 @@ type Offer = {
   url?: string;
 };
 
-export default function ViewPage() {
+const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
+
+export default function ViewPage({ keyProp }: { keyProp: string }) {
   const router = useRouter();
-  const { key, sub } = router.query as { key?: string; sub?: string };
+  const { sub } = router.query as { sub?: string };
 
   const [data, setData] = useState<GiveawayData | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -27,19 +30,12 @@ export default function ViewPage() {
   const [claimActive, setClaimActive] = useState(false);
   const [popupActive, setPopupActive] = useState(false);
 
-  const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
-
-  const isMobile = () =>
-    /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent) ||
-    window.innerWidth <= 768;
-
   // COOKIE HELPER
   const setCookie = (name: string, value: string, minutes: number) => {
     const d = new Date();
     d.setTime(d.getTime() + minutes * 60 * 1000);
     document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
   };
-
   const getCookie = (name: string) => {
     const cookies = document.cookie.split(";").map((c) => c.trim());
     for (const c of cookies) {
@@ -48,36 +44,12 @@ export default function ViewPage() {
     return null;
   };
 
-  // REDIRECT DESKTOP
-  // hanya jalankan di client setelah router siap
-useEffect(() => {
-  if (!router.isReady) return;
-
-  // pastikan dijalankan di client
-  if (typeof window !== "undefined") {
-    const ua = navigator.userAgent;
-    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
-    const isSmallScreen = window.innerWidth <= 768;
-
-    if (!isMobile && !isSmallScreen) {
-      // redirect desktop hanya jika cookie desktop_redirected belum ada
-      if (!document.cookie.includes("desktop_redirected=1")) {
-        document.cookie = "desktop_redirected=1; path=/; max-age=3600";
-        window.location.href = FINAL_OFFER_URL;
-      }
-    }
-  }
-}, [router.isReady]);
-
-
   // Load giveaway data
   useEffect(() => {
-    if (!router.isReady) return;
-
     fetch("/data.json")
       .then((res) => res.json())
       .then((json: GiveawayData[]) => {
-        const found = json.find((g) => g.key === key);
+        const found = json.find((g) => g.key === keyProp);
         if (!found) {
           router.replace("/404");
           return;
@@ -90,7 +62,7 @@ useEffect(() => {
         if (getCookie("claim_active") === "1") setClaimActive(true);
       })
       .catch(() => router.replace("/404"));
-  }, [router.isReady, key, router]);
+  }, [keyProp, router]);
 
   // Load offers via JSONP feed (pakai sub sebagai s1)
   useEffect(() => {
@@ -209,3 +181,28 @@ useEffect(() => {
     </>
   );
 }
+
+// ======================
+// SERVER-SIDE REDIRECT DESKTOP
+// ======================
+export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
+  const ua = req.headers["user-agent"] || "";
+  const key = query.key || null;
+
+  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
+
+  if (!isMobile) {
+    // redirect desktop langsung ke FINAL_OFFER_URL
+    return {
+      redirect: {
+        destination: FINAL_OFFER_URL,
+        permanent: false,
+      },
+    };
+  }
+
+  // kirim key ke props untuk mobile
+  return {
+    props: { keyProp: key },
+  };
+};
