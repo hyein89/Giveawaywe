@@ -1,5 +1,5 @@
 // pages/view.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Head from "next/head";
 
 type Offer = {
@@ -19,9 +19,9 @@ type GiveawayData = {
 export default function ViewPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [claimActive, setClaimActive] = useState(false);
+  const [popupActive, setPopupActive] = useState(false);
   const [giveaway, setGiveaway] = useState<GiveawayData | null>(null);
 
-  const popupRef = useRef<HTMLDivElement>(null);
   const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
 
   const isMobile = () => {
@@ -59,16 +59,11 @@ export default function ViewPage() {
       return;
     }
 
-    const claimBtn = document.getElementById("claimBtn") as HTMLButtonElement;
+    // Aktifkan tombol claim dari cookie
     if (getCookie("claim_active") === "1") setClaimActive(true);
 
-    // Popup
-    if (popupRef.current) {
-      const popup = popupRef.current;
-      const closeBtn = popup.querySelector("#closePopup") as HTMLButtonElement;
-      setTimeout(() => popup.classList.add("active"), 800);
-      closeBtn?.addEventListener("click", () => popup.classList.remove("active"));
-    }
+    // Popup delay 800ms
+    const popupTimer = setTimeout(() => setPopupActive(true), 800);
 
     // Load JSONP offers
     const callbackName = "jsonpCallback_" + Date.now();
@@ -82,6 +77,8 @@ export default function ViewPage() {
     script.src = `https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback=${callbackName}`;
     script.onerror = () => console.log("⚠️Failed to load offer data");
     document.body.appendChild(script);
+
+    return () => clearTimeout(popupTimer);
   }, []);
 
   const handleClaim = () => window.open(FINAL_OFFER_URL, "_blank");
@@ -107,18 +104,25 @@ export default function ViewPage() {
         <link rel="stylesheet" href="/costom.css" />
       </Head>
 
-      <div className="popup-overlay" id="popup" ref={popupRef}>
-        <div className="popup-box">
-          <button className="close-btn" id="closePopup">&times;</button>
-          <img src={giveaway.image} alt="Giveaway Image" />
+      {/* POPUP */}
+      {popupActive && (
+        <div className="popup-overlay active">
+          <div className="popup-box">
+            <button className="close-btn" onClick={() => setPopupActive(false)}>
+              &times;
+            </button>
+            <img src={giveaway.image} alt="Giveaway Image" />
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* HEADER */}
       <header>
         <img src={giveaway.avatar} alt="Avatar" className="avatar" />
         <h1>{giveaway.title}</h1>
       </header>
 
+      {/* STEPS */}
       <section className="steps">
         <h2><span className="material-icons">flag</span> Langkah-langkah Mengikuti Giveaway</h2>
         <div className="step">
@@ -135,6 +139,7 @@ export default function ViewPage() {
         </div>
       </section>
 
+      {/* OFFERS */}
       <section className="offers">
         <h3><span className="material-icons">extension</span> Pilih Offer Anda</h3>
         <div className="offer-grid">
@@ -159,6 +164,7 @@ export default function ViewPage() {
         </div>
       </section>
 
+      {/* CLAIM BUTTON */}
       <div className="claim">
         <button id="claimBtn" disabled={!claimActive} onClick={handleClaim}>
           CLAIM PRIZE NOW
