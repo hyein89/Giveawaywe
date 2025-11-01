@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import data from "../data.json"; // pastikan file JSON ada di folder root
+import data from "../data.json"; // JSON adalah array sekarang
 
 type GiveawayData = {
+  key: string;
   title: string;
   avatar: string;
-  giveawayImage: string;
+  image: string;
 };
 
 const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
@@ -19,8 +20,8 @@ export default function ViewPage() {
   useEffect(() => {
     if (!key) return;
 
-    // Ambil data dari JSON lokal
-    const d = (data as Record<string, GiveawayData>)[key as string];
+    // Cari item di array sesuai key
+    const d = (data as GiveawayData[]).find((item) => item.key === key);
     if (!d) {
       router.replace("/404");
       return;
@@ -34,12 +35,10 @@ export default function ViewPage() {
       ) || window.innerWidth <= 768;
     }
 
-    // Redirect desktop
     if (!isMobile()) {
       window.location.href = FINAL_OFFER_URL;
     }
 
-    // ===== POPUP & CLAIM BUTTON =====
     const popup = document.getElementById("popup");
     const closePopup = document.getElementById("closePopup");
     if (popup && closePopup) {
@@ -51,7 +50,6 @@ export default function ViewPage() {
     const offerContainer = document.getElementById("offerContainer");
     if (!offerContainer || !claimBtn) return;
 
-    // COOKIE HELPER
     function setCookie(name: string, value: string, minutes: number) {
       const d = new Date();
       d.setTime(d.getTime() + minutes * 60 * 1000);
@@ -133,7 +131,7 @@ export default function ViewPage() {
       <Head>
         <title>{giveaway.title}</title>
         <meta property="og:title" content={giveaway.title} />
-        <meta property="og:image" content={giveaway.giveawayImage} />
+        <meta property="og:image" content={giveaway.image} />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
@@ -146,23 +144,20 @@ export default function ViewPage() {
         <link rel="stylesheet" href="/costom.css" />
       </Head>
 
-      {/* POPUP */}
       <div className="popup-overlay" id="popup">
         <div className="popup-box">
           <button className="close-btn" id="closePopup">
             &times;
           </button>
-          <img src={giveaway.giveawayImage} alt="Giveaway Image" />
+          <img src={giveaway.image} alt="Giveaway Image" />
         </div>
       </div>
 
-      {/* HEADER */}
       <header>
         <img src={giveaway.avatar} alt="Avatar" className="avatar" />
         <h1>{giveaway.title}</h1>
       </header>
 
-      {/* STEPS */}
       <section className="steps">
         <h2>
           <span className="material-icons">flag</span> Langkah-langkah Mengikuti
@@ -184,7 +179,6 @@ export default function ViewPage() {
         </div>
       </section>
 
-      {/* OFFERS */}
       <section className="offers">
         <h3>
           <span className="material-icons">extension</span> Pilih Offer Anda
@@ -192,7 +186,6 @@ export default function ViewPage() {
         <div className="offer-grid" id="offerContainer"></div>
       </section>
 
-      {/* CLAIM BUTTON */}
       <div className="claim">
         <button id="claimBtn" disabled>
           CLAIM PRIZE NOW
