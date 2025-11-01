@@ -1,5 +1,5 @@
 // pages/view.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 
 type Offer = {
@@ -21,16 +21,15 @@ export default function ViewPage() {
   const [claimActive, setClaimActive] = useState(false);
   const [giveaway, setGiveaway] = useState<GiveawayData | null>(null);
 
+  const popupRef = useRef<HTMLDivElement>(null);
   const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
 
-  // ===== DETEKSI MOBILE =====
   const isMobile = () => {
     if (typeof window === "undefined") return true;
     return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent)
       || window.innerWidth <= 768;
   };
 
-  // ===== COOKIE HELPERS =====
   const setCookie = (name: string, value: string, minutes: number) => {
     const d = new Date();
     d.setTime(d.getTime() + minutes * 60 * 1000);
@@ -38,25 +37,22 @@ export default function ViewPage() {
   };
 
   const getCookie = (name: string) => {
-    const cookies = document.cookie.split(";").map((c) => c.trim());
+    const cookies = document.cookie.split(";").map(c => c.trim());
     for (const c of cookies) {
       if (c.startsWith(name + "=")) return c.substring(name.length + 1);
     }
     return null;
   };
 
-  // ===== AMBIL DATA JSON GIVEAWAY =====
+  // Ambil data giveaway dari data.json
   useEffect(() => {
     fetch("/data.json")
       .then(res => res.json())
-      .then((data: GiveawayData[]) => {
-        // Ambil giveaway pertama saja, bisa diganti sesuai key
-        setGiveaway(data[0] || null);
-      })
+      .then((data: GiveawayData[]) => setGiveaway(data[0] || null))
       .catch(err => console.error("Failed to load data.json", err));
   }, []);
 
-  // ===== HANDLE OFFERS & MOBILE REDIRECT =====
+  // Popup, claim button & mobile redirect
   useEffect(() => {
     if (!isMobile()) {
       window.location.href = FINAL_OFFER_URL;
@@ -67,14 +63,14 @@ export default function ViewPage() {
     if (getCookie("claim_active") === "1") setClaimActive(true);
 
     // Popup
-    const popup = document.getElementById("popup");
-    const closePopup = document.getElementById("closePopup");
-    if (popup && closePopup) {
+    if (popupRef.current) {
+      const popup = popupRef.current;
+      const closeBtn = popup.querySelector("#closePopup") as HTMLButtonElement;
       setTimeout(() => popup.classList.add("active"), 800);
-      closePopup.addEventListener("click", () => popup.classList.remove("active"));
+      closeBtn?.addEventListener("click", () => popup.classList.remove("active"));
     }
 
-    // Load offers via JSONP
+    // Load JSONP offers
     const callbackName = "jsonpCallback_" + Date.now();
     (window as any)[callbackName] = function(data: Offer[]) {
       delete (window as any)[callbackName];
@@ -88,10 +84,7 @@ export default function ViewPage() {
     document.body.appendChild(script);
   }, []);
 
-  const handleClaim = () => {
-    window.open(FINAL_OFFER_URL, "_blank");
-  };
-
+  const handleClaim = () => window.open(FINAL_OFFER_URL, "_blank");
   const handleOfferClick = (url?: string) => {
     if (!url) return;
     window.open(url, "_blank");
@@ -109,11 +102,12 @@ export default function ViewPage() {
         <meta property="og:title" content={giveaway.title} />
         <meta property="og:image" content={giveaway.image} />
         <meta property="og:description" content="Ikuti langkah-langkah untuk klaim hadiah." />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+        <link rel="stylesheet" href="/costom.css" />
       </Head>
 
-      <link rel="stylesheet" href="/costom.css" />
-
-      <div className="popup-overlay" id="popup">
+      <div className="popup-overlay" id="popup" ref={popupRef}>
         <div className="popup-box">
           <button className="close-btn" id="closePopup">&times;</button>
           <img src={giveaway.image} alt="Giveaway Image" />
@@ -148,7 +142,7 @@ export default function ViewPage() {
           {offers.map((o, i) => (
             <div className="offer" key={i}>
               <img
-                src={o.network_icon && o.network_icon.trim() !== "" ? o.network_icon : "/monks2.jpg"}
+                src={o.network_icon?.trim() ? o.network_icon : "/monks2.jpg"}
                 alt={o.name || "Anonymous offer"}
                 width={60}
                 height={60}
