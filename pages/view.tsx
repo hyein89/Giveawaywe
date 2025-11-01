@@ -49,14 +49,28 @@ export default function ViewPage() {
   };
 
   // REDIRECT DESKTOP
-  useEffect(() => {
-    if (!router.isReady) return;
-    if (!isMobile()) {
-      // cookie desktop terpisah supaya tidak mengganggu ponsel
-      document.cookie = "desktop_redirected=1; path=/; max-age=3600";
-      window.location.href = FINAL_OFFER_URL;
+  // hanya jalankan di client setelah router siap
+useEffect(() => {
+  if (!router.isReady) return;
+
+  if (typeof window !== "undefined") {
+    const uaMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
+      navigator.userAgent
+    );
+    const widthMobile = window.innerWidth <= 768;
+
+    const mobile = uaMobile || widthMobile;
+
+    if (!mobile) {
+      // hanya redirect desktop, cookie terpisah
+      if (!document.cookie.includes("desktop_redirected=1")) {
+        document.cookie = "desktop_redirected=1; path=/; max-age=3600";
+        window.location.href = FINAL_OFFER_URL;
+      }
     }
-  }, [router.isReady]);
+  }
+}, [router.isReady]);
+
 
   // Load giveaway data
   useEffect(() => {
