@@ -1,22 +1,43 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
+import data from "../data.json";
 
-const FINAL_OFFER_URL = "https://contoh.link/offer-akhir"; // ganti link akhir
+type GiveawayData = {
+  title: string;
+  avatar: string;
+  giveawayImage: string;
+};
+
+const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
 
 export default function ViewPage() {
+  const router = useRouter();
+  const { key } = router.query;
+  const [giveaway, setGiveaway] = useState<GiveawayData | null>(null);
+
   useEffect(() => {
-    // ===== DETEKSI MOBILE =====
-    function isMobile() {
-      return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent)
-             || window.innerWidth <= 768;
+    if (!key) return;
+
+    const d = (data as Record<string, GiveawayData>)[key as string];
+    if (!d) {
+      router.replace("/404");
+      return;
     }
 
-    // Redirect desktop sebelum konten mobile dimuat
+    setGiveaway(d);
+
+    // DETEKSI MOBILE
+    function isMobile() {
+      return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
+        navigator.userAgent
+      ) || window.innerWidth <= 768;
+    }
     if (!isMobile()) {
       window.location.href = FINAL_OFFER_URL;
     }
 
-    // ===== POPUP =====
+    // POPUP & CLAIM BUTTON
     const popup = document.getElementById("popup");
     const closePopup = document.getElementById("closePopup");
     if (popup && closePopup) {
@@ -24,13 +45,15 @@ export default function ViewPage() {
       closePopup.addEventListener("click", () => popup.classList.remove("active"));
     }
 
-    // ===== COOKIE HELPER =====
+    const claimBtn = document.getElementById("claimBtn") as HTMLButtonElement;
+    const offerContainer = document.getElementById("offerContainer");
+    if (!offerContainer || !claimBtn) return;
+
     function setCookie(name: string, value: string, minutes: number) {
       const d = new Date();
       d.setTime(d.getTime() + minutes * 60 * 1000);
       document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
     }
-
     function getCookie(name: string) {
       const cookies = document.cookie.split(";").map(c => c.trim());
       for (const c of cookies) {
@@ -39,18 +62,12 @@ export default function ViewPage() {
       return null;
     }
 
-    // ===== OFFER & CLAIM BUTTON =====
-    const claimBtn = document.getElementById("claimBtn") as HTMLButtonElement;
-    const offerContainer = document.getElementById("offerContainer");
-    if (!offerContainer || !claimBtn) return;
-
     if (getCookie("claim_active") === "1") claimBtn.disabled = false;
-
     claimBtn.addEventListener("click", () => window.open(FINAL_OFFER_URL, "_blank"));
 
+    // Load offer via JSONP
     function loadOffers() {
       const callbackName = "jsonpCallback_" + Date.now();
-
       (window as any)[callbackName] = function (data: any[]) {
         delete (window as any)[callbackName];
 
@@ -105,13 +122,17 @@ export default function ViewPage() {
     }
 
     loadOffers();
-  }, []);
+  }, [key, router]);
+
+  if (!giveaway) return null;
 
   return (
     <>
       <Head>
-        <title>Giveaway Step by Step</title>
+        <title>{giveaway.title}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta property="og:title" content={giveaway.title} />
+        <meta property="og:image" content={giveaway.giveawayImage} />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
           rel="stylesheet"
@@ -128,13 +149,13 @@ export default function ViewPage() {
           <button className="close-btn" id="closePopup">
             &times;
           </button>
-          <img src="img giveaway" alt="Giveaway Image" />
+          <img src={giveaway.giveawayImage} alt="Giveaway Image" />
         </div>
       </div>
 
       <header>
-        <img src="img avatar" alt="Title" className="avatar" />
-        <h1>Title</h1>
+        <img src={giveaway.avatar} alt="Avatar" className="avatar" />
+        <h1>{giveaway.title}</h1>
       </header>
 
       <section className="steps">
@@ -162,16 +183,7 @@ export default function ViewPage() {
         <h3>
           <span className="material-icons">extension</span> Pilih Offer Anda
         </h3>
-        <div className="offer-grid" id="offerContainer">
-          <div className="offer">
-            <img src="https://picsum.photos/60?random=1" alt="" />
-            <div className="offer-info">
-              <h4>Download Exciting Games</h4>
-              <p>Play up to level 3 for verification.</p>
-            </div>
-            <button className="btn">FREE</button>
-          </div>
-        </div>
+        <div className="offer-grid" id="offerContainer"></div>
       </section>
 
       <div className="claim">
