@@ -1,162 +1,105 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import Head from "next/head";
-import data from "../data.json";
+import data from "../data.json"; // pastikan data.json ada di root folder / atau sesuaikan path
 
-type GiveawayData = {
+interface GiveawayData {
   key: string;
   title: string;
   avatar: string;
   image: string;
-};
+}
+
+interface Offer {
+  network_icon?: string;
+  name?: string;
+  anchor?: string;
+  url?: string;
+}
 
 const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
 
-export default function ViewPage() {
-  const router = useRouter();
-  const { key } = router.query;
+export default function GiveawayView({ keyParam }: { keyParam?: string }) {
+  const [claimActive, setClaimActive] = useState(false);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [popupActive, setPopupActive] = useState(false);
   const [giveaway, setGiveaway] = useState<GiveawayData | null>(null);
 
+  // Ambil data dari JSON berdasarkan key
   useEffect(() => {
-    if (!key) return;
+    const found = data.find((d) => d.key === keyParam) || null;
+    setGiveaway(found);
+  }, [keyParam]);
 
-    const d = (data as GiveawayData[]).find((item) => item.key === key);
-    if (!d) {
-      router.replace("/404");
-      return;
-    }
-    setGiveaway(d);
+  // Helper cookie
+  const setCookie = (name: string, value: string, minutes: number) => {
+    const d = new Date();
+    d.setTime(d.getTime() + minutes * 60 * 1000);
+    document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
+  };
+  const getCookie = (name: string) => {
+    return document.cookie
+      .split(";")
+      .map((c) => c.trim())
+      .find((c) => c.startsWith(name + "="))
+      ?.split("=")[1];
+  };
 
-    if (typeof window === "undefined") return;
-
-    // ===== DETEKSI MOBILE =====
-    function isMobile() {
-      return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
-        navigator.userAgent
-      ) || window.innerWidth <= 768;
-    }
-
-    if (!isMobile()) {
+  // Mobile detection + redirect desktop
+  useEffect(() => {
+    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
+      navigator.userAgent
+    ) || window.innerWidth <= 768;
+    if (!isMobile) {
       window.location.href = FINAL_OFFER_URL;
-      return;
     }
 
-    // ==== POPUP ====
-    const popup = document.getElementById("popup");
-    const closePopup = document.getElementById("closePopup");
-    if (popup && closePopup) {
-      setTimeout(() => popup.classList.add("active"), 800);
-      closePopup.addEventListener("click", () => popup.classList.remove("active"));
-    }
+    setTimeout(() => setPopupActive(true), 800);
+    if (getCookie("claim_active") === "1") setClaimActive(true);
 
-    // ==== OFFER & CLAIM BUTTON ====
-    const claimBtn = document.getElementById("claimBtn") as HTMLButtonElement;
-    const offerContainer = document.querySelector(".offer-grid");
-    if (!offerContainer || !claimBtn) return;
-
-    function setCookie(name: string, value: string, minutes: number) {
-      const d = new Date();
-      d.setTime(d.getTime() + minutes * 60 * 1000);
-      document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
-    }
-    function getCookie(name: string) {
-      const cookies = document.cookie.split(";").map((c) => c.trim());
-      for (const c of cookies) {
-        if (c.startsWith(name + "=")) return c.substring(name.length + 1);
-      }
-      return null;
-    }
-
-    if (getCookie("claim_active") === "1") claimBtn.disabled = false;
-    claimBtn.addEventListener("click", () => window.open(FINAL_OFFER_URL, "_blank"));
-
-    // ===== LOAD OFFER FEED =====
+    // Load offers via JSONP
     const callbackName = "jsonpCallback_" + Date.now();
-    (window as any)[callbackName] = function (offers: any[]) {
+    (window as any)[callbackName] = (data: Offer[]) => {
+      setOffers(data.slice(0, 8));
       delete (window as any)[callbackName];
-      if (!Array.isArray(offers) || offers.length === 0) {
-        offerContainer.innerHTML = "<p>⚠️ Data not available.</p>";
-        return;
-      }
-
-      offerContainer.innerHTML = "";
-      offers.slice(0, 8).forEach((o) => {
-        const imgSrc = o.network_icon?.trim() || "/monks2.jpg";
-        const name = o.name || "Anonymous offer";
-        const anchor = o.anchor || "Complete this task to claim the reward!";
-        const url = o.url || "#";
-
-        const div = document.createElement("div");
-        div.className = "offer";
-
-        const img = document.createElement("img");
-        img.src = imgSrc;
-        img.alt = name;
-        img.width = 60;
-        img.height = 60;
-        img.style.objectFit = "cover";
-        img.onerror = () => (img.src = "/monks2.jpg");
-
-        const info = document.createElement("div");
-        info.className = "offer-info";
-        info.innerHTML = `<h4>${name}</h4><p>${anchor}</p>`;
-
-        const btn = document.createElement("button");
-        btn.className = "btn";
-        btn.textContent = "FREE";
-        btn.addEventListener("click", () => {
-          window.open(url, "_blank");
-          claimBtn.disabled = false;
-          setCookie("claim_active", "1", 30);
-        });
-
-        div.appendChild(img);
-        div.appendChild(info);
-        div.appendChild(btn);
-        offerContainer.appendChild(div);
-      });
     };
 
     const script = document.createElement("script");
     script.src = `https://d2xohqmdyl2cj3.cloudfront.net/public/offers/feed.php?user_id=485302&api_key=1b68e4a31a7e98d11dcf741f5e5fce38&s1=&s2=&callback=${callbackName}`;
-    script.onerror = () =>
-      (offerContainer.innerHTML = "<p><center>⚠️Failed to load offer data</center></p>");
+    script.onerror = () => console.error("Failed to load offer data");
     document.body.appendChild(script);
-  }, [key, router]);
 
-  if (!giveaway) return null;
+    return () => {
+      document.body.removeChild(script);
+      delete (window as any)[callbackName];
+    };
+  }, []);
+
+  if (!giveaway) return <p>⚠️ Giveaway not found</p>;
 
   return (
-    <>
-      <Head>
-        <title>{giveaway.title}</title>
-        <meta property="og:title" content={giveaway.title} />
-        <meta property="og:image" content={giveaway.image} />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/icon?family=Material+Icons"
-          rel="stylesheet"
-        />
-        <link rel="stylesheet" href="/costom.css" />
-      </Head>
-
-      <div className="popup-overlay" id="popup">
-        <div className="popup-box">
-          <button className="close-btn" id="closePopup">
-            &times;
-          </button>
-          <img src={giveaway.image} alt="Giveaway Image" />
+    <div>
+      {/* POPUP */}
+      {popupActive && (
+        <div className="popup-overlay active" id="popup">
+          <div className="popup-box">
+            <button
+              className="close-btn"
+              id="closePopup"
+              onClick={() => setPopupActive(false)}
+            >
+              &times;
+            </button>
+            <img src={giveaway.image} alt="Giveaway Image" />
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* HEADER */}
       <header>
-        <img src={giveaway.avatar} alt="Avatar" className="avatar" />
+        <img src={giveaway.avatar} alt={giveaway.title} className="avatar" />
         <h1>{giveaway.title}</h1>
       </header>
 
+      {/* STEPS */}
       <section className="steps">
         <h2>
           <span className="material-icons">flag</span> Langkah-langkah Mengikuti
@@ -178,18 +121,52 @@ export default function ViewPage() {
         </div>
       </section>
 
+      {/* OFFERS */}
       <section className="offers">
         <h3>
           <span className="material-icons">extension</span> Pilih Offer Anda
         </h3>
-        <div className="offer-grid"></div>
+        <div className="offer-grid">
+          {offers.length === 0 && <p>Loading offers...</p>}
+          {offers.map((o, i) => (
+            <div className="offer" key={i}>
+              <img
+                src={o.network_icon?.trim() || "/monks2.jpg"}
+                alt={o.name || "Anonymous offer"}
+                width={60}
+                height={60}
+                style={{ objectFit: "cover" }}
+                onError={(e: any) => (e.target.src = "/monks2.jpg")}
+              />
+              <div className="offer-info">
+                <h4>{o.name || "Anonymous offer"}</h4>
+                <p>{o.anchor || "Complete this task to claim the reward!"}</p>
+              </div>
+              <button
+                className="btn"
+                onClick={() => {
+                  window.open(o.url || "#", "_blank");
+                  setClaimActive(true);
+                  setCookie("claim_active", "1", 30);
+                }}
+              >
+                FREE
+              </button>
+            </div>
+          ))}
+        </div>
       </section>
 
+      {/* CLAIM BUTTON */}
       <div className="claim">
-        <button id="claimBtn" disabled>
+        <button
+          id="claimBtn"
+          disabled={!claimActive}
+          onClick={() => window.open(FINAL_OFFER_URL, "_blank")}
+        >
           CLAIM PRIZE NOW
         </button>
       </div>
-    </>
+    </div>
   );
 }
