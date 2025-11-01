@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import fs from "fs";
+import path from "path";
 
 type GiveawayData = {
   key: string;
@@ -17,15 +19,19 @@ type Offer = {
   url?: string;
 };
 
-export default function ViewPage() {
-  const router = useRouter();
-  const { key, sub } = router.query as { key?: string; sub?: string };
+type Props = {
+  giveaway?: GiveawayData;
+};
 
-  const [data, setData] = useState<GiveawayData | null>(null);
+export default function ViewPage({ giveaway }: Props) {
+  const router = useRouter();
+  const { sub } = router.query as { sub?: string };
+
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [claimActive, setClaimActive] = useState(false);
   const [popupActive, setPopupActive] = useState(false);
+
+  const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
 
   // COOKIE HELPER
   const setCookie = (name: string, value: string, minutes: number) => {
@@ -41,27 +47,7 @@ export default function ViewPage() {
     return null;
   };
 
-  // Load giveaway data
-  useEffect(() => {
-    if (!router.isReady) return;
-
-    fetch("/data.json")
-      .then((res) => res.json())
-      .then((json: GiveawayData[]) => {
-        const found = json.find((g) => g.key === key);
-        if (!found) {
-          router.replace("/404");
-          return;
-        }
-        setData(found);
-        setLoading(false);
-
-        setTimeout(() => setPopupActive(true), 800);
-
-        if (getCookie("claim_active") === "1") setClaimActive(true);
-      })
-      .catch(() => router.replace("/404"));
-  }, [router.isReady, key, router]);
+  if (!giveaway) return <p>Giveaway not found.</p>;
 
   // Load offers via JSONP feed (pakai sub sebagai s1)
   useEffect(() => {
@@ -80,20 +66,24 @@ export default function ViewPage() {
     document.body.appendChild(script);
   }, [sub]);
 
-  const handleClaim = () => window.open("https://contoh.link/offer-akhir", "_blank");
+  // Check cookie untuk claim
+  useEffect(() => {
+    if (getCookie("claim_active") === "1") setClaimActive(true);
+    setTimeout(() => setPopupActive(true), 800);
+  }, []);
 
-  if (loading || !data) return null;
+  const handleClaim = () => window.open(FINAL_OFFER_URL, "_blank");
 
   return (
     <>
       <Head>
-        <title>{data.title}</title>
+        <title>{giveaway.title}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta property="og:title" content={data.title} />
-        <meta property="og:image" content={data.image} />
+        <meta property="og:title" content={giveaway.title} />
+        <meta property="og:image" content={giveaway.image} />
         <meta property="og:type" content="website" />
-        <meta property="og:description" content={`Join ${data.title} giveaway now!`} />
-        <meta property="og:url" content={typeof window !== "undefined" ? window.location.href : ""} />
+        <meta property="og:description" content={`Join ${giveaway.title} giveaway now!`} />
+        <meta property="og:url" content={`https://giveawaywe.vercel.app${router.asPath}`} />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
           rel="stylesheet"
@@ -112,14 +102,14 @@ export default function ViewPage() {
             <button className="close-btn" onClick={() => setPopupActive(false)}>
               &times;
             </button>
-            <img src={data.image} alt={data.title} />
+            <img src={giveaway.image} alt={giveaway.title} />
           </div>
         </div>
       )}
 
       <header>
-        <img src={data.avatar} alt={data.title} className="avatar" />
-        <h1>{data.title}</h1>
+        <img src={giveaway.avatar} alt={giveaway.title} className="avatar" />
+        <h1>{giveaway.title}</h1>
       </header>
 
       <section className="steps">
@@ -182,4 +172,20 @@ export default function ViewPage() {
       </div>
     </>
   );
+}
+
+// getServerSideProps untuk meta tag OG
+export async function getServerSideProps(context: any) {
+  const { key } = context.query;
+  const dataPath = path.join(process.cwd(), "public", "data.json");
+  const jsonData = JSON.parse(fs.readFileSync(dataPath, "utf-8")) as GiveawayData[];
+  const giveaway = jsonData.find((g) => g.key === key) || null;
+
+  if (!giveaway) {
+    return { notFound: true }; // redirect ke 404
+  }
+
+  return {
+    props: { giveaway },
+  };
 }
