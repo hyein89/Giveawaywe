@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { GetServerSideProps } from "next";
 
 type GiveawayData = {
   key: string;
@@ -18,11 +17,9 @@ type Offer = {
   url?: string;
 };
 
-const FINAL_OFFER_URL = "https://contoh.link/offer-akhir";
-
-export default function ViewPage({ keyProp }: { keyProp: string }) {
+export default function ViewPage() {
   const router = useRouter();
-  const { sub } = router.query as { sub?: string };
+  const { key, sub } = router.query as { key?: string; sub?: string };
 
   const [data, setData] = useState<GiveawayData | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -46,10 +43,12 @@ export default function ViewPage({ keyProp }: { keyProp: string }) {
 
   // Load giveaway data
   useEffect(() => {
+    if (!router.isReady) return;
+
     fetch("/data.json")
       .then((res) => res.json())
       .then((json: GiveawayData[]) => {
-        const found = json.find((g) => g.key === keyProp);
+        const found = json.find((g) => g.key === key);
         if (!found) {
           router.replace("/404");
           return;
@@ -62,7 +61,7 @@ export default function ViewPage({ keyProp }: { keyProp: string }) {
         if (getCookie("claim_active") === "1") setClaimActive(true);
       })
       .catch(() => router.replace("/404"));
-  }, [keyProp, router]);
+  }, [router.isReady, key, router]);
 
   // Load offers via JSONP feed (pakai sub sebagai s1)
   useEffect(() => {
@@ -81,7 +80,7 @@ export default function ViewPage({ keyProp }: { keyProp: string }) {
     document.body.appendChild(script);
   }, [sub]);
 
-  const handleClaim = () => window.open(FINAL_OFFER_URL, "_blank");
+  const handleClaim = () => window.open("https://contoh.link/offer-akhir", "_blank");
 
   if (loading || !data) return null;
 
@@ -92,6 +91,9 @@ export default function ViewPage({ keyProp }: { keyProp: string }) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta property="og:title" content={data.title} />
         <meta property="og:image" content={data.image} />
+        <meta property="og:type" content="website" />
+        <meta property="og:description" content={`Join ${data.title} giveaway now!`} />
+        <meta property="og:url" content={typeof window !== "undefined" ? window.location.href : ""} />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
           rel="stylesheet"
@@ -181,28 +183,3 @@ export default function ViewPage({ keyProp }: { keyProp: string }) {
     </>
   );
 }
-
-// ======================
-// SERVER-SIDE REDIRECT DESKTOP
-// ======================
-export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
-  const ua = req.headers["user-agent"] || "";
-  const key = query.key || null;
-
-  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
-
-  if (!isMobile) {
-    // redirect desktop langsung ke FINAL_OFFER_URL
-    return {
-      redirect: {
-        destination: FINAL_OFFER_URL,
-        permanent: false,
-      },
-    };
-  }
-
-  // kirim key ke props untuk mobile
-  return {
-    props: { keyProp: key },
-  };
-};
